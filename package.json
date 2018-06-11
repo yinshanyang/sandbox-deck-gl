@@ -1,0 +1,23 @@
+{
+  "name": "sandbox-deck-gl",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "ui react-component test",
+    "build:lib": "ui react-component build:lib",
+    "build:app": "ui react-component build:app",
+    "dev": "ui react-component dev",
+    "test:watch": "ui react-component test:watch",
+    "lint": "ui react-component lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ocd-sg/ui": "github:ocd-sg/ui",
+    "d3": "^5.4.0",
+    "deck.gl": "^5.3.1"
+  },
+  "devDependencies": {},
+  "description": ""
+}
