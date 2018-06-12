@@ -5,11 +5,19 @@ const d3 = require('d3')
 const { DeckGL, COORDINATE_SYSTEM, OrbitView, TextLayer } = require('deck.gl')
 const { default: Controller } = require('./Controller')
 
-type Position = [number, number]
+const data = require('./w2v-300d-100k.json')
+
 type Datum = {
-  text: string,
-  position: Position,
-  size: number
+  x: number,
+  y: number,
+  count: number,
+  text: string
+}
+type Domain = [number, number]
+type Domains = {
+  x: Domain,
+  y: Domain,
+  count: Domain
 }
 
 const width = window.innerWidth
@@ -27,20 +35,39 @@ const initialViewState = {
   height
 }
 
+const domains = data
+  .reduce((memo: Domains, d: Datum) => ({
+    x: [
+      Math.min(memo.x[0], d.x),
+      Math.max(memo.x[1], d.x)
+    ],
+    y: [
+      Math.min(memo.y[0], d.y),
+      Math.max(memo.y[1], d.y)
+    ],
+    count: [
+      Math.min(memo.count[0], d.count),
+      Math.max(memo.count[1], d.count)
+    ]
+  }), {
+    x: [Infinity, -Infinity],
+    y: [Infinity, -Infinity],
+    count: [Infinity, -Infinity]
+  })
+
 const scales = {
-  x: d3.scaleLinear().domain([0, 1]).range([-1000, 1000]),
-  y: d3.scaleLinear().domain([0, 1]).range([-1000, 1000]),
-  s: d3.scaleLinear().domain([0, 1]).range([8, 16]),
+  x: d3.scaleLinear().domain(domains.x).range([-1000, 1000]),
+  y: d3.scaleLinear().domain(domains.y).range([-1000, 1000]),
+  count: d3.scaleLog().domain(domains.count).range([8, 32]),
 }
 
-const n = ~~(Math.random() * 1000 * 1000) + 1000
-const generateData = (_: any, index: any) => ({
-  text: index.toString(),
-  position: [Math.random(), Math.random()],
-  size: Math.random()
-})
-const data = Array(n).fill(0).map(generateData)
-
+console.log(domains)
+console.log(data)
+console.log(data.map((d: Datum) => ({
+  x: scales.x(d.x),
+  y: scales.y(d.y),
+  count: scales.count(d.count)
+})))
 
 const view = new OrbitView()
 
@@ -49,10 +76,11 @@ const layer = new TextLayer({
   data,
   coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
   getText: ({ text }: Datum) => text,
-  getPosition: ({ position }: Datum) => [ scales.x(position[0]), scales.y(position[1]) ],
+  getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y) ],
   sizeScale: 6,
-  getSize: ({ size }: Datum) => scales.s(size),
-  getColor: () => [0, 0, 0, 50]
+  getSize: ({ count }: Datum) => scales.count(count),
+  // getSize: () => 12,
+  getColor: () => [0, 0, 0, 128]
 })
 
 storiesOf('Component', module)

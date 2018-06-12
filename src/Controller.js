@@ -294,5 +294,6 @@ class OrbitState {
 export default class OrbitController extends Controller {
   constructor(props) {
     super(OrbitState, props);
+    this.invertPan = true;
   }
 }
