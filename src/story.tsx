@@ -37,6 +37,7 @@ const view = new OrbitView()
 
 class Component extends PureComponent {
   state = {
+    text: 'text',
     data: []
   }
 
@@ -65,23 +66,27 @@ class Component extends PureComponent {
   }
 
   render () {
-    const { data } = this.state
+    const { data, text } = this.state
     const scales = this.getScales(data)
+
+    const getText = text === 'text'
+      ? ({ text }: Datum) => text
+      : () => '.'
 
     const layer = new TextLayer({
       id: 'layer',
       data,
       coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-      getText: ({ text }: Datum) => text,
+      getText: getText,
       getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y) ],
       sizeScale: 6,
       // getSize: ({ count }: Datum) => scales.count(count),
       getSize: () => 12,
-      getColor: () => [0, 0, 0, 128]
+      getColor: () => [0, 0, 0, 64]
     })
 
     return (
-      <div className='w-100 h-100'>
+      <div className='w-100 h-100 f7'>
         <DeckGL
           width='100%'
           height='100%'
@@ -90,6 +95,9 @@ class Component extends PureComponent {
           layers={[layer]}
           controller={Controller}
         />
+        <button className='absolute top-1 left-1' onClick={this.handleToggle}>
+          magic
+        </button>
         <input type='file' className='absolute top-1 right-1' onChange={this.handleChange} />
       </div>
     )
@@ -117,6 +125,8 @@ class Component extends PureComponent {
     reader.onload = () => this.parseCsv(reader.result)
     reader.readAsText(file)
   }
+
+  handleToggle = () => this.setState({ text: this.state.text === 'text' ? 'dots' : 'text', data: this.state.data.slice() })
 }
 
 storiesOf('Component', module)
