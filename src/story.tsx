@@ -41,6 +41,14 @@ class Component extends PureComponent {
     data: []
   }
 
+  componentDidMount () {
+    window.addEventListener('keydown', this.handleKeyDown)
+  }
+
+  componentWillUnmount () {
+    window.removeEventListener('keydown', this.handleKeyDown)
+  }
+
   getScales = (data: Datum[]) => {
     const domains = data
       .reduce((memo: Domains, d: Datum) => ({
@@ -127,6 +135,8 @@ class Component extends PureComponent {
   }
 
   handleToggle = () => this.setState({ text: this.state.text === 'text' ? 'dots' : 'text', data: this.state.data.slice() })
+
+  handleKeyDown = (evt: any) => evt.keyCode === 32 && this.handleToggle()
 }
 
 storiesOf('Component', module)
