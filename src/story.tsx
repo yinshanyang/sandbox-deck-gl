@@ -5,7 +5,8 @@ import 'ui-tachyons-light'
 
 const d3 = require('d3')
 const { DeckGL, COORDINATE_SYSTEM, OrbitView, TextLayer } = require('deck.gl')
-const { default: Controller } = require('./Controller')
+const { default: PanZoomController } = require('./PanZoomController')
+const { default: InvariantScatterplotLayer } = require('./InvariantScatterplotLayer/InvariantScatterplotLayer')
 
 type Datum = {
   x: number,
@@ -19,13 +20,8 @@ const width = window.innerWidth
 const height = window.innerHeight
 
 const initialViewState = {
-  lookAt: [0, 0, 0],
-  distance: 3,
-  rotationX: 0,
-  rotationOrbit: 0,
-  orbitAxis: 'Y',
-  minDistance: 1,
-  maxDistance: 10,
+  distance: 0.75,
+  zoom: 0.0005,
   width,
   height
 }
@@ -34,6 +30,8 @@ const view = new OrbitView()
 
 class Component extends PureComponent {
   state = {
+    scale: 3,
+    quantile: 0.995,
     text: {
       base: 'dot',
       count: 'dot'
@@ -53,7 +51,7 @@ class Component extends PureComponent {
   }
 
   getScales = () => {
-    const { data } = this.state
+    const { scale, quantile, data } = this.state
     const { base, count } = data
 
     const xDomain = base.reduce((memo: Domain, d: Datum) => [
@@ -64,15 +62,19 @@ class Component extends PureComponent {
       Math.min(memo[0], d.y),
       Math.max(memo[1], d.y)
     ], [Infinity, -Infinity])
-    const zDomain = count.reduce((memo: Domain, d: Datum) => [
-      Math.min(memo[0], d.z),
-      Math.max(memo[1], d.z)
-    ], [Infinity, -Infinity])
+    // const zDomain = count.reduce((memo: Domain, d: Datum) => [
+    //   Math.min(memo[0], d.z),
+    //   Math.max(memo[1], d.z)
+    // ], [Infinity, -Infinity])
+    const zDomain = [
+      count.map(({ z }: Datum) => z).reduce((memo, d) => Math.min(memo, d), Infinity),
+      d3.quantile(count.map(({ z }: Datum) => z).sort((a, b) => a > b ? 1 : a < b ? -1 : 0), quantile)
+    ]
 
     const scales = {
       x: d3.scaleLinear().domain(xDomain).range([-1000, 1000]),
       y: d3.scaleLinear().domain(yDomain).range([-1000, 1000]),
-      z: d3.scalePow(0.5).domain(zDomain).range([1, 72 * 3])
+      z: d3.scalePow(0.5).domain(zDomain).range([1, 16 * scale]).clamp(true)
     }
 
     return scales
@@ -84,23 +86,21 @@ class Component extends PureComponent {
 
     const baseLayer = text.base === 'text'
       ? new TextLayer({
-        id: 'baseLayer',
+        id: 'baseLayer-text',
         data: data.base,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
         fontFamily: 'Fira Code, Monaco, monospace',
         getText: ({ text }: Datum) => text,
         getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y) ],
-        getSize: () => 72,
+        getSize: () => 16,
         getColor: () => [128, 128, 128, 64]
       })
-      : new TextLayer({
-        id: 'baseLayer',
+      : new InvariantScatterplotLayer({
+        id: 'baseLayer-dot',
         data: data.base,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-        fontFamily: 'Fira Code, Monaco, monospace',
-        getText: () => '.',
         getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y)],
-        getSize: () => 72,
+        getRadius: 3,
         getColor: () => [88, 88, 88, 64]
       })
 
@@ -113,7 +113,7 @@ class Component extends PureComponent {
 
     const countLayer = text.count === 'text'
       ? new TextLayer({
-        id: 'countLayer',
+        id: 'countLayer-text',
         data: data.count,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
         fontFamily: 'Fira Code, Monaco, monospace',
@@ -122,14 +122,12 @@ class Component extends PureComponent {
         getSize: ({ z }: Datum) => scales.z(z),
         getColor: [255, 0, 0, 255]
       })
-      : new TextLayer({
-        id: 'countLayer',
+      : new InvariantScatterplotLayer({
+        id: 'countLayer-dot',
         data: data.count,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-        fontFamily: 'Fira Code, Monaco, monospace',
-        getText: () => '.',
-        getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y) ],
-        getSize: ({ z }: Datum) => scales.z(z),
+        getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y)],
+        getRadius: ({ z }: Datum) => scales.z(z),
         getColor: [255, 0, 0, 255]
       })
 
@@ -137,7 +135,7 @@ class Component extends PureComponent {
   }
 
   render () {
-    console.log(this.state)
+    const { scale, quantile } = this.state
     const layers = [
       this.getBaseLayer(),
       this.getCountLayer()
@@ -151,14 +149,28 @@ class Component extends PureComponent {
           initialViewState={initialViewState}
           views={[view]}
           layers={layers}
-          controller={Controller}
+          controller={PanZoomController}
         />
+        <div className='absolute top-1 left-1'>
+          <input className='db' type='range' value={scale} min='1' max='16' step='0.1' onChange={this.handleViewChange('scale')} />
+          <input className='db' type='range' value={quantile} min='0.95' max='1' step='0.001' onChange={this.handleViewChange('quantile')} />
+        </div>
         <div className='absolute top-1 right-1'>
-          <input type='file' className='db mb1' onChange={this.handleChange('base')} />
-          <input type='file' className='db' onChange={this.handleChange('count')} />
+          <input type='file' className='db mb1' onChange={this.handleDataScale('base')} />
+          <input type='file' className='db' onChange={this.handleDataScale('count')} />
         </div>
       </div>
     )
+  }
+
+  handleViewChange = (key: string) => (evt: any) => {
+    this.setState({
+      [key]: evt.target.value,
+      data: {
+        ...this.state.data,
+        count: this.state.data.count.slice()
+      }
+    })
   }
 
   parseCsv = (csv: string) => {
@@ -174,7 +186,7 @@ class Component extends PureComponent {
     return data
   }
 
-  handleChange = (key: string) => (evt: any) => {
+  handleDataScale = (key: string) => (evt: any) => {
     const file = evt.target.files[0]
     if (!file) {
       return
