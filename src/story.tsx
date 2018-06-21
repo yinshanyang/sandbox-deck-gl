@@ -151,13 +151,25 @@ class Component extends PureComponent {
           layers={layers}
           controller={PanZoomController}
         />
-        <div className='absolute top-1 left-1'>
-          <input className='db' type='range' value={scale} min='1' max='16' step='0.1' onChange={this.handleViewChange('scale')} />
-          <input className='db' type='range' value={quantile} min='0.95' max='1' step='0.001' onChange={this.handleViewChange('quantile')} />
+        <div className='absolute top-1 left-1 pa1 background-100 bg-foreground-80'>
+          <div className='h1 pa1 flex flex-row items-center'>
+            <label className='db w3 flex-none'>Scale:</label>
+            <input className='db flex-auto' type='range' value={scale} min='1' max='16' step='0.1' onChange={this.handleViewChange('scale')} />
+          </div>
+          <div className='h1 pa1 flex flex-row items-center'>
+            <label className='db w3 flex-none'>Quantile:</label>
+            <input className='db flex-auto' type='range' value={quantile} min='0.95' max='1' step='0.001' onChange={this.handleViewChange('quantile')} />
+          </div>
         </div>
-        <div className='absolute top-1 right-1'>
-          <input type='file' className='db mb1' onChange={this.handleDataScale('base')} />
-          <input type='file' className='db' onChange={this.handleDataScale('count')} />
+        <div className='absolute top-1 right-1 pa1 background-100 bg-foreground-80'>
+          <div className='h1 pa1 flex flex-row items-center'>
+            <label className='db w3 flex-none'>Base:</label>
+            <input type='file' className='db flex-auto' onChange={this.handleDataScale('base')} />
+          </div>
+          <div className='h1 pa1 flex flex-row items-center'>
+            <label className='db w3 flex-none'>Topic:</label>
+            <input type='file' className='db flex-auto' onChange={this.handleDataScale('count')} />
+          </div>
         </div>
       </div>
     )
