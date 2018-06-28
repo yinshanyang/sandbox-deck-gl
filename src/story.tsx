@@ -5,7 +5,8 @@ import 'ui-tachyons-light'
 
 const d3 = require('d3')
 const { DeckGL, COORDINATE_SYSTEM, OrbitView, TextLayer } = require('deck.gl')
-const { default: Controller } = require('./Controller')
+const { default: PanZoomController } = require('./PanZoomController')
+const { default: InvariantScatterplotLayer } = require('./InvariantScatterplotLayer/InvariantScatterplotLayer')
 
 type Datum = {
   x: number,
@@ -19,18 +20,20 @@ const width = window.innerWidth
 const height = window.innerHeight
 
 const initialViewState = {
-  lookAt: [0, 0, 0],
-  distance: 3,
-  rotationX: 0,
-  rotationOrbit: 0,
-  orbitAxis: 'Y',
-  minDistance: 1,
-  maxDistance: 10,
+  distance: 0.75,
   width,
-  height
+  height,
+  zoom: 0.0005
 }
 
 const view = new OrbitView()
+
+const DATA = Array(10 * 1000 * 1000).fill(0).map((_, index): Datum => ({
+  text: index.toString(),
+  x: Math.random(),
+  y: Math.random(),
+  z: Math.random()
+}))
 
 class Component extends PureComponent {
   state = {
@@ -39,7 +42,7 @@ class Component extends PureComponent {
       count: 'dot'
     },
     data: {
-      base: [],
+      base: DATA,
       count: []
     }
   }
@@ -72,7 +75,7 @@ class Component extends PureComponent {
     const scales = {
       x: d3.scaleLinear().domain(xDomain).range([-1000, 1000]),
       y: d3.scaleLinear().domain(yDomain).range([-1000, 1000]),
-      z: d3.scalePow(0.5).domain(zDomain).range([1, 72 * 3])
+      z: d3.scalePow(0.5).domain(zDomain).range([1, 16 * 3])
     }
 
     return scales
@@ -90,18 +93,18 @@ class Component extends PureComponent {
         fontFamily: 'Fira Code, Monaco, monospace',
         getText: ({ text }: Datum) => text,
         getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y) ],
-        getSize: () => 72,
+        getSize: () => 16,
         getColor: () => [128, 128, 128, 64]
       })
-      : new TextLayer({
-        id: 'baseLayer',
+      : new InvariantScatterplotLayer({
+        id: 'baseLayer-hello',
         data: data.base,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-        fontFamily: 'Fira Code, Monaco, monospace',
-        getText: () => '.',
-        getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y)],
-        getSize: () => 72,
-        getColor: () => [88, 88, 88, 64]
+        strokeWidth: 2,
+        outline: true,
+        getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y), 0],
+        getRadius: () => 8,
+        getColor: () => [255, 255, 255, 255]
       })
 
     return baseLayer
@@ -122,15 +125,13 @@ class Component extends PureComponent {
         getSize: ({ z }: Datum) => scales.z(z),
         getColor: [255, 0, 0, 255]
       })
-      : new TextLayer({
-        id: 'countLayer',
+      : new InvariantScatterplotLayer({
+        id: 'countLayer-dots',
         data: data.count,
         coordinateSystem: COORDINATE_SYSTEM.IDENTITY,
-        fontFamily: 'Fira Code, Monaco, monospace',
-        getText: () => '.',
-        getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y) ],
-        getSize: ({ z }: Datum) => scales.z(z),
-        getColor: [255, 0, 0, 255]
+        getPosition: ({ x, y }: Datum) => [ scales.x(x), scales.y(y), 0],
+        getRadius: () => 6,
+        getColor: () => [20, 20, 20, 255]
       })
 
     return countLayer
@@ -151,7 +152,7 @@ class Component extends PureComponent {
           initialViewState={initialViewState}
           views={[view]}
           layers={layers}
-          controller={Controller}
+          controller={PanZoomController}
         />
         <div className='absolute top-1 right-1'>
           <input type='file' className='db mb1' onChange={this.handleChange('base')} />
